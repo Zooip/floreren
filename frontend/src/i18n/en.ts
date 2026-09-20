@@ -2123,6 +2123,16 @@ export const en: Translations = {
     fieldObservation: 'Field observation',
   },
 
+  outage: {
+    quota: {
+      title: 'The database is out of puff 😮‍💨',
+      body: 'Its monthly allowance has run out. Not your fault and not your plants — everything is saved safely, nothing can just load right now. Retrying will not help; this clears once the allowance is topped up.',
+    },
+    unreachable: {
+      title: 'The database is not answering',
+      body: 'Floreren cannot reach the database right now. Your data is safe. This is usually brief — try again in a few minutes.',
+    },
+  },
   common: {
     loading: 'Loading…',
     notFound: 'Not found',

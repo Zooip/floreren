@@ -13,16 +13,38 @@ type ApiOptions = {
   signal?: AbortSignal
 }
 
+/** Machine-readable outages the API names, so the app can explain itself.
+ *
+ *  Not prose: the backend sends a stable code and the wording lives here, in
+ *  the reader's language. A spent database quota is the one worth spotting —
+ *  it is not a bug, a retry will not fix it, and it used to arrive as an
+ *  indistinguishable failure that sent us looking for a bug in the app. */
+export type OutageCode = 'database_quota_exceeded' | 'database_unavailable'
+
+const OUTAGE_CODES: OutageCode[] = ['database_quota_exceeded', 'database_unavailable']
+
+let outageListener: ((code: OutageCode) => void) | null = null
+
+/** Register the banner. One listener: this is a single app-wide condition. */
+export function onApiOutage(listener: ((code: OutageCode) => void) | null) {
+  outageListener = listener
+}
+
 async function ensureOk(res: Response, fallback: string): Promise<void> {
   if (res.ok) return
   let msg = fallback
+  let code: OutageCode | undefined
   try {
     const body = await res.json()
     if (body.detail) msg = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail)
+    if (res.status === 503 && OUTAGE_CODES.includes(body.detail)) {
+      code = body.detail as OutageCode
+      outageListener?.(code)
+    }
   } catch { /* keep fallback */ }
   // Carry the HTTP status so callers can branch on it instead of matching
   // (language-dependent) detail strings.
-  throw Object.assign(new Error(msg), { status: res.status })
+  throw Object.assign(new Error(msg), { status: res.status, outage: code })
 }
 
 function buildUrl(path: string, params?: Record<string, string>) {

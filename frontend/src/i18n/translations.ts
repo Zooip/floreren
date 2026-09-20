@@ -2087,6 +2087,10 @@ export type Translations = {
     fieldObservation: string
   }
 
+  outage: {
+    quota: { title: string; body: string }
+    unreachable: { title: string; body: string }
+  }
   common: {
     loading: string
     notFound: string

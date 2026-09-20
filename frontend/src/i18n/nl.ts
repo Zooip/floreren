@@ -2125,6 +2125,18 @@ export const nl: Translations = {
     fieldObservation: 'Veldwaarneming',
   },
 
+  outage: {
+    quota: {
+      title: 'De database is even buiten adem 😮‍💨',
+      // Specifiek, want dat is het hele punt: zonder deze regel gingen we twee
+      // keer een middag in de app naar een bug zoeken die er niet was.
+      body: 'Het maandtegoed van de database is op. Niet jouw schuld en niet je planten — alles staat veilig opgeslagen, er kan alleen even niets geladen worden. Opnieuw proberen helpt niet; dit lost zich op zodra het tegoed weer is bijgevuld.',
+    },
+    unreachable: {
+      title: 'De database doet even niet mee',
+      body: 'Floreren kan de database nu niet bereiken. Je gegevens zijn veilig. Dit is meestal van korte duur — probeer het over een paar minuten nog eens.',
+    },
+  },
   common: {
     loading: 'Laden…',
     notFound: 'Niet gevonden',

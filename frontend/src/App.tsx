@@ -17,6 +17,7 @@ import { getGuest } from './api/game'
 import { icons } from './api/client'
 import { Analytics } from '@vercel/analytics/react'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import OutageBanner from './components/ui/OutageBanner'
 import { useT } from './context/LanguageContext'
 import { defaultMapRedirectSlug } from './appMapRedirectModel'
 
@@ -258,6 +259,9 @@ export default function App() {
 
   return (
     <LanguageProvider>
+      {/* Outside every page gate on purpose: a database outage is not a page's
+          problem, and the game and study screens hide their chrome. */}
+      <OutageBanner />
       <div className="flex flex-col h-dvh bg-bg overflow-hidden">
       {!isPublicHome && error && (
         <div className="bg-overdue/10 text-overdue px-4 py-2 text-sm flex justify-between items-center">

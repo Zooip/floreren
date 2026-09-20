@@ -123,11 +123,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def _database_outage_code(exc: Exception) -> str | None:
+    """Name a database outage so the app can say which one it is.
+
+    Worth telling apart because the two need different things from the reader.
+    A spent Neon quota is not a bug to hunt and not something a retry fixes —
+    it needs a plan change or a wait — while any other connection failure is
+    usually transient. Both used to arrive as an indistinguishable 500, which
+    is how a September outage turned into an afternoon of looking for a bug in
+    the app.
+
+    Returns a stable code, never prose: the client branches on this, and the
+    wording it shows is its own, in the reader's language.
+    """
+    import asyncpg
+
+    if isinstance(exc, asyncpg.exceptions.InsufficientResourcesError):
+        return "database_quota_exceeded"
+    if isinstance(exc, (asyncpg.exceptions.PostgresConnectionError, ConnectionError, OSError)):
+        return "database_unavailable"
+    if isinstance(exc, asyncpg.exceptions.PostgresError):
+        return None  # a real query error: that IS a bug, and must look like one
+    return None
+
+
 # Global exception handler — catches all unhandled exceptions so the API
 # always returns a proper JSON error with CORS headers instead of a raw 500.
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     _log.error("Unhandled exception: %s", exc, exc_info=True)
+    outage = _database_outage_code(exc)
+    if outage is not None:
+        # 503, not 500: this is "come back later", not "something is broken in
+        # the code", and the distinction is the whole point of the code below.
+        return JSONResponse(
+            status_code=503,
+            content={"detail": outage},
+            headers={"Access-Control-Allow-Origin": "*"},
+        )
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error"},
