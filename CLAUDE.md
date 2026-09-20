@@ -142,11 +142,39 @@ flyctl secrets set KEY=value -a floreren-api --remote-only
 # Deploy (builds Docker image, rolls new machines)
 flyctl deploy -a floreren-api --remote-only
 
-# Health check
+# Liveness — is the process serving? (no DB; this is what Fly's check polls)
 curl https://floreren-api.fly.dev/health
+
+# Readiness — can it reach Neon? 503 + {"database":"unavailable"} when not
+curl https://floreren-api.fly.dev/health/ready
 ```
 
 Fly binary: `~/.fly/bin/flyctl` (export PATH). Never use `--local-only` — always `--remote-only`.
+
+**Liveness must never touch the database.** It used to run `SELECT 1`, which
+made a Neon outage a total outage: the check failed, Fly pulled the machine
+from rotation, and the edge returned an empty 503 with no CORS headers — so the
+browser blamed CORS and the real cause was invisible. A restart cannot fix an
+unreachable database. Use `/health/ready` for that, and read it as a report,
+not as rotation input.
+
+### Neon compute — what actually burns it
+
+Neon bills **compute-time**, not queries, and suspends only while **no
+connection is open**. Two things used to guarantee it never suspended, and
+together they exhausted a month's quota in about 4½ idle days (2026-09-18):
+
+| cause | effect |
+|---|---|
+| `create_pool(min_size=1)` | one connection held open forever |
+| `/health` running `SELECT 1` | a query every 30s, round the clock |
+
+Both are fixed (`min_size=0`, DB-free liveness). `min_machines_running = 1`
+stays as it is — it is there so in-process admin jobs are not killed mid-run,
+and with an idle pool a running machine now costs Neon nothing. When adding
+anything that polls on a timer, remember it wakes Neon for minutes, not
+milliseconds: `BIOCLIP_SYNC_INTERVAL_S` (6h) and the digest cron are the only
+periodic DB touches left.
 
 Key Fly secrets:
 | Secret | Purpose |

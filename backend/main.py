@@ -134,12 +134,44 @@ async def global_exception_handler(request: Request, exc: Exception):
         headers={"Access-Control-Allow-Origin": "*"},
     )
 
-# Health check for Fly.io — pings DB to catch silent connection-pool issues.
+# Liveness for Fly.io. Deliberately does NOT touch the database.
+#
+# It used to run `SELECT 1`, which turned every database outage into a total
+# one: the check failed, Fly pulled the machine out of rotation, and the edge
+# answered every request with an empty 503 — no body, no CORS headers, so the
+# browser reported it as a CORS error and the real cause (a spent Neon quota)
+# was invisible from the app.
+#
+# A restart cannot fix an unreachable database, so liveness must not depend on
+# one. It answers one question: is this process still serving? Keeping the
+# machine in rotation lets the API return a real error with real headers, which
+# a client can read and explain.
+#
+# It also queried the database every 30 seconds, round the clock, which by
+# itself was enough to stop Neon's compute ever auto-suspending. See
+# `/health/ready` for the database check.
 @app.get("/health")
 async def health():
-    async with get_db() as db:
-        await db.execute_fetchall("SELECT 1")
     return {"status": "ok"}
+
+
+@app.get("/health/ready")
+async def health_ready():
+    """Readiness: can this process actually reach the database?
+
+    For humans and uptime monitors, not for Fly's rotation. Returns 503 with a
+    readable body rather than failing the liveness check.
+    """
+    try:
+        async with get_db() as db:
+            await db.execute_fetchall("SELECT 1")
+    except Exception as exc:
+        _log.warning("Readiness check failed: %s", exc)
+        return JSONResponse(
+            status_code=503,
+            content={"status": "degraded", "database": "unavailable"},
+        )
+    return {"status": "ok", "database": "ok"}
 
 
 # Prewarm target: the frontend fires this (fire-and-forget, unauthenticated)
