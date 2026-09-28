@@ -16,8 +16,9 @@ between**, so treat "checks passed" as "this is on floreren.app".
 
 - **Decide and proceed.** State your assumptions in the PR body. A wrong call
   is fixed by the next PR, which ships in minutes.
-- **Want a human to look first?** Open the PR as a draft (auto-merge skips
-  drafts) and say what you want looked at.
+- **Want a human to look first? Don't open a PR.** A draft doesn't hold it
+  back: `auto-merge.yml` marks drafts ready too. Push the branch and ask Leon
+  on the issue what you want looked at. He opens the PR, or tells you to.
 - **Don't merge, deploy, rewrite history or delete branches/tags by hand.**
   You don't need to.
 - **After the merge, check the deploy.** Run
