@@ -2,23 +2,23 @@
 <#
 .SYNOPSIS
   Create / list / remove isolated git worktrees so multiple agents can work in
-  parallel without sharing one working folder. See docs/agents/how-we-work.md (§5).
+  parallel without sharing one working folder. See docs/agents/how-we-work.md (§4).
 
 .DESCRIPTION
-  Each worktree is a sibling folder of the repo (e.g. ../floreren-13) checked out on
-  its own branch, branched off the latest origin/master. Agents work there and merge
-  back to master via a PR.
+  Each worktree lives inside the repo in the git-ignored .worktrees folder (e.g.
+  .worktrees/floreren-13), checked out on its own branch off the latest origin/master.
+  Agents work there and ship via a PR. Never create worktrees as sibling folders.
 
 .EXAMPLE
   ./scripts/agent-worktree.ps1 new 13 map-sun-cells
-  # -> ../floreren-13 on branch fix/13-map-sun-cells (off latest origin/master)
+  # -> .worktrees/floreren-13 on branch fix/13-map-sun-cells (off latest origin/master)
 
 .EXAMPLE
   ./scripts/agent-worktree.ps1 list
 
 .EXAMPLE
   ./scripts/agent-worktree.ps1 remove 13
-  # -> removes the ../floreren-13 folder (the branch is kept; delete it with
+  # -> removes the .worktrees/floreren-13 folder (the branch is kept; delete it with
   #    'git branch -D fix/13-...' once it's merged)
 #>
 param(
@@ -32,10 +32,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# Always operate from the repo root.
-$repo = (git rev-parse --show-toplevel).Trim()
+# Always operate from the main checkout, even when run from inside another worktree.
+$repo = Split-Path (git rev-parse --path-format=absolute --git-common-dir).Trim() -Parent
 Set-Location $repo
-$parent = Split-Path $repo -Parent
+$parent = Join-Path $repo '.worktrees'
 $base = 'floreren'   # worktree folders are named <base>-<issue>
 
 function Get-WorktreeDir([string]$issue) { Join-Path $parent "$base-$issue" }
@@ -47,13 +47,14 @@ switch ($Action) {
     $dir = Get-WorktreeDir $Issue
     if (Test-Path $dir) { throw "Folder already exists: $dir" }
 
+    New-Item -ItemType Directory -Force $parent | Out-Null
     git fetch origin master
     git worktree add $dir -b $branch origin/master
     Write-Host ""
     Write-Host "✓ Worktree ready" -ForegroundColor Green
     Write-Host "  folder: $dir"
     Write-Host "  branch: $branch (off origin/master)"
-    Write-Host "  next:   cd `"$dir`"  then do the work, test, and open a PR."
+    Write-Host "  next:   cd `"$dir`"  install deps (frontend: npm install; backend: uv venv --python 3.12 + requirements.txt), work, test, open a PR."
   }
   'list' {
     git worktree list

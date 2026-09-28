@@ -2,6 +2,8 @@
 
 Mobile-first PWA for Leon & Lisbeth (Amsterdam) to track plants, log care, and visualise their garden and indoor spaces. Built to eventually support other users with their own gardens.
 
+**Agents: read `docs/agents/how-we-work.md` before your first change.** It is short. It covers how a change ships (a green PR auto-merges and deploys), what to ask Leon about first, and how parallel agents claim work and use worktrees.
+
 ## Dev
 
 All commands run from the repo root:
@@ -288,7 +290,7 @@ Credentials (`cert.pem`, `config.yml`, `<tunnel-id>.json`) must live in BOTH:
 ## Agent skills
 
 Matt Pocock's engineering + productivity skills are installed globally
-(`~/.claude/skills/`). `docs/agents/how-we-work.md` §4 maps each skill to a workflow
+(`~/.claude/skills/`). `docs/agents/how-we-work.md` §7 maps each skill to a workflow
 step; the three configs below tell those skills Floreren's specifics.
 
 ### Issue tracker
@@ -297,7 +299,7 @@ Issues live in GitHub Issues (`leo4226/groei-app`). See `docs/agents/issue-track
 
 ### Triage labels
 
-Default label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+`needs-triage`, `needs-info`, `ready`, `needs-plan`, `wontfix`, plus `difficulty: …` and the `in-progress` claim. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 

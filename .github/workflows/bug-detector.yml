@@ -1,6 +1,6 @@
 name: Bug detector
 
-# DISCOVER stage of the agent loop (docs/agents/how-we-work.md §12).
+# DISCOVER stage of the agent loop (docs/agents/how-we-work.md §7).
 # Collects real failure signals — /health, ERROR lines in Fly logs, failed
 # workflow runs on master — and files deduplicated GitHub issues labeled
 # `bug, needs-triage, auto-detected`. It never hunts speculatively: no

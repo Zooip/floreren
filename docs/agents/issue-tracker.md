@@ -25,10 +25,9 @@ Run `gh issue view <number> --comments`.
 
 - **Titles** lead with an emoji: `🐛 …` for bugs, `✨ …` for features/enhancements.
 - **New issues** default to `bug,needs-triage` (or `enhancement,needs-triage`); triage
-  later adds a `difficulty: …` label and routes to `ready-for-agent` / `ready-for-human`
-  (see `triage-labels.md`).
+  later adds a `difficulty: …` label and `ready` or `needs-plan` (see `triage-labels.md`).
 - **Auto-close on merge:** put `Closes #<n>` in the PR body — don't close manually.
-- **Don't start** `needs-triage` / `needs-info` issues; only work `ready-for-*` issues
+- **Don't start** `needs-triage` / `needs-info` issues; work `ready` / `needs-plan` issues
   that aren't already `in-progress`.
 
 ## Plans vs issues — how `to-prd` / `to-issues` behave here
@@ -39,4 +38,4 @@ Run `gh issue view <number> --comments`.
 - Smaller specs and design docs live in `docs/plans/`.
 - `to-issues` should **keep a coupled epic as a single issue** (one agent owns it end to
   end) and only fan out into separate issues when the slices are genuinely independent —
-  different files, no ordering. See `how-we-work.md` §2.
+  different files, no ordering. See `how-we-work.md` §3.

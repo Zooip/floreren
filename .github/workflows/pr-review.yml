@@ -1,6 +1,6 @@
 name: PR review
 
-# VERIFY stage of the agent loop (docs/agents/how-we-work.md §12).
+# VERIFY stage of the agent loop (docs/agents/how-we-work.md §7).
 # Two layers, deliberately separate:
 #
 #  1. test-guard (deterministic, ADVISORY): reports — but no longer fails on —

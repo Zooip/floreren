@@ -1,47 +1,33 @@
-# Triage Labels
+# Triage labels
 
-The skills speak in terms of five canonical triage roles. This file maps those roles to the actual label strings used in this repo's issue tracker.
+Maps the canonical triage roles that Matt Pocock's skills speak in to this
+repo's label strings. The workflow around them is in `how-we-work.md` §3.
 
-| Label in mattpocock/skills | Label in our tracker | Meaning                                  |
-| -------------------------- | -------------------- | ---------------------------------------- |
-| `needs-triage`             | `needs-triage`       | Maintainer needs to evaluate this issue  |
-| `needs-info`               | `needs-info`         | Waiting on reporter for more information |
-| `ready-for-agent`          | `ready-for-agent`    | Fully specified, ready for an AFK agent  |
-| `ready-for-human`          | `ready-for-human`    | Requires human implementation            |
-| `wontfix`                  | `wontfix`            | Will not be actioned                     |
+| Skill role | Our label | Meaning |
+|---|---|---|
+| `needs-triage` | `needs-triage` | Not evaluated yet |
+| `needs-info` | `needs-info` | Waiting on Leon or the reporter |
+| `ready-for-agent` | `ready` | Specified enough to build; any agent takes it |
+| `ready-for-human` | `needs-plan` | Real but underspecified; any agent scopes it first, then builds it |
+| `wontfix` | `wontfix` | Will not be done |
 
-When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
+When a skill says "apply the AFK-ready label", use `ready`. When it says "route to
+a human", use `needs-plan`. No label names an agent type: every agent can plan and
+build. The old `ready-for-agent` / `ready-for-human` labels were retired on
+2026-09-28.
 
-Edit the right-hand column to match whatever vocabulary you actually use.
+## Difficulty
 
-## Difficulty labels
+| Label | Stars | Meaning |
+|---|---|---|
+| `difficulty: easy` | ⭐ | Quick, low-risk |
+| `difficulty: medium` | ⭐⭐ | Moderate effort |
+| `difficulty: hard` | ⭐⭐⭐ | Substantial, tricky or unknown territory |
 
-Independent of the triage role, every issue is ranked by rough effort to fix. This
-mirrors the ⭐ convention in `docs/plans/TODO.md`.
+Set one at triage. The 🐛 bug-report form lets the reporter guess; triage confirms it.
 
-| Label                | Stars | Meaning                                   |
-| -------------------- | ----- | ----------------------------------------- |
-| `difficulty: easy`   | ⭐     | Quick, low-risk fix                       |
-| `difficulty: medium` | ⭐⭐    | Moderate effort                           |
-| `difficulty: hard`   | ⭐⭐⭐   | Substantial or tricky / unknown territory |
+## `in-progress`: the claim
 
-Apply one during triage. The **🐛 Bug report** form
-(`.github/ISSUE_TEMPLATE/bug_report.yml`) lets the reporter add a guess in the body;
-confirm it with the real label when the issue is triaged.
-
-## `in-progress` — soft lock (parallel agents)
-
-Several agents run at once, so `in-progress` is a **soft lock, not a triage state**. An
-agent adds it the moment it starts an issue (§7) and removes it if it abandons the work.
-**Only pick issues that are `ready-for-agent` and NOT `in-progress`.** See
-`how-we-work.md` §3 and §7.
-
-## Routing — who works which role
-
-When the `triage` skill accepts an issue (and clears `needs-triage`), it must set a
-`difficulty: …` label **and** route to one of:
-
-- `ready-for-agent` → **DeepSeek / executor agents** — clear, fully specified, AFK-ready.
-- `ready-for-human` → **Claude or Leon** — needs a plan, judgment, or has no obvious solution.
-
-See `triage-cheatsheet.md` for the step-by-step.
+This isn't a triage state. It's a soft lock, because several agents run at once. An
+agent adds it (plus a comment naming itself) when it starts, and removes it if it
+abandons the work. Skip any issue that has it.

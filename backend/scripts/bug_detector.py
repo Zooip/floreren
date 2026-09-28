@@ -11,8 +11,8 @@ signals and turns each new one into a GitHub issue:
 Each finding gets a stable signature embedded in the issue body
 (<!-- detector-sig: ... -->) so a recurring error never files a duplicate
 while its issue is still open. Issues land as `bug, needs-triage,
-auto-detected` — triage (Leon/Claude) routes them onward per
-docs/agents/how-we-work.md.
+auto-detected` — triage routes them to `ready` / `needs-plan` per
+docs/agents/how-we-work.md §3.
 
 If NOUS_API_KEY is set, the issue title/summary is polished by the same
 LLM config the backend uses (Nous Portal, DeepSeek V4 Flash); without it
@@ -227,9 +227,9 @@ def file_issue(repo: str, f: Finding) -> None:
         f"- **Context**: {f.context or '—'}",
         f"- **Occurrences in this window**: {f.count}",
         "",
-        "_Triage me: confirm it's real, set a difficulty label, then route_",
-        "_`ready-for-agent` (DeepSeek) or `ready-for-human` (Claude) — see_",
-        "_`docs/agents/how-we-work.md` §4._",
+        "_Triage me: confirm it's real, set a difficulty label, then label it_",
+        "_`ready` (clear enough to build) or `needs-plan` (scope it first) — see_",
+        "_`docs/agents/how-we-work.md` §3._",
         "",
         f"<!-- {SIG_MARKER} {sig} -->",
     ])
