@@ -10,6 +10,7 @@ import os
 import asyncio
 
 from services.calendar_feed_log_redaction import CalendarFeedAccessLogFilter
+from services.storage import storage_class
 
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("uvicorn.access").addFilter(CalendarFeedAccessLogFilter())
@@ -255,6 +256,9 @@ app.include_router(study_router.router, prefix="/api")
 app.include_router(share_router.router)
 # Public garden atlas — anonymous browse surface for opt-in gardens (/api/atlas).
 app.include_router(atlas_router.router, prefix="/api")
+
+# Before the frontend catch-all below, which would shadow anything mounted after it.
+storage_class().mount(app)
 
 # Serve the built frontend (production mode)
 _frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"

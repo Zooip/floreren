@@ -14,7 +14,7 @@ from database import db_dep
 from auth import require_admin
 from services.svg_validator import validate_icon_svg
 from services.phenology import parse_phenology
-from services.storage import build_storage_from_env
+from services.storage import build_storage_from_env, storage_class
 from services.icon_ai import generate_icon_variants
 from services.icon_catalog import load_catalog
 from services.admin_audit import log_admin_action
@@ -31,13 +31,6 @@ router = APIRouter(tags=["admin-panel"])
 
 HEALTH_CHECK_TIMEOUT_SECONDS = 3.0
 DATABASE_HEALTH_CHECK_TIMEOUT_SECONDS = 1.0
-_R2_REQUIRED_ENV = (
-    "R2_ACCOUNT_ID",
-    "R2_ACCESS_KEY_ID",
-    "R2_SECRET_ACCESS_KEY",
-    "R2_BUCKET",
-    "R2_PUBLIC_BASE_URL",
-)
 
 
 def _health(status: str, detail: str, latency_ms: int | None = None) -> dict:
@@ -127,28 +120,12 @@ def _missing_env(names: tuple[str, ...]) -> list[str]:
     return [name for name in names if not (os.environ.get(name) or "").strip()]
 
 
-async def _check_r2_storage() -> dict:
-    missing = _missing_env(_R2_REQUIRED_ENV)
+async def _check_storage() -> dict:
+    missing = _missing_env(storage_class().required_env)
     if missing:
         return _health("unconfigured", "Missing " + ", ".join(missing))
 
-    storage = build_storage_from_env()
-    health_key = (os.environ.get("R2_HEALTHCHECK_KEY") or "").strip().lstrip("/")
-
-    def _probe() -> tuple[str, str]:
-        if health_key:
-            response = storage._client.head_object(Bucket=storage.bucket, Key=health_key)  # noqa: SLF001
-            code = response.get("ResponseMetadata", {}).get("HTTPStatusCode")
-            status = "ok" if code is None or 200 <= int(code) < 300 else "degraded"
-            return status, f"head_object ok for {health_key}"
-
-        response = storage._client.list_objects_v2(Bucket=storage.bucket, MaxKeys=1)  # noqa: SLF001
-        code = response.get("ResponseMetadata", {}).get("HTTPStatusCode")
-        status = "ok" if code is None or 200 <= int(code) < 300 else "degraded"
-        count = response.get("KeyCount", 0)
-        return status, f"bucket {storage.bucket} reachable; sampled {count} object(s)"
-
-    status, detail = await asyncio.to_thread(_probe)
+    status, detail = await asyncio.to_thread(build_storage_from_env().check_health)
     return _health(status, detail)
 
 
@@ -404,7 +381,7 @@ async def admin_health(admin=Depends(require_admin), db=Depends(db_dep)):
     checks: dict[str, tuple[Callable[[], Awaitable[dict]], float | None]] = {
         "database": (lambda: _check_database(db), DATABASE_HEALTH_CHECK_TIMEOUT_SECONDS),
         "bioclip": (_check_bioclip_worker, None),
-        "r2": (_check_r2_storage, None),
+        "r2": (_check_storage, None),
         "llm": (_check_llm_config, None),
         "email": (_check_email_config, None),
     }

@@ -16,6 +16,7 @@ async def test_admin_health_reports_each_service_without_live_llm_call(
 ):
     import llm_config
     import routers.admin_panel as admin_panel
+    from services.storage import R2Storage
 
     class FakeR2Client:
         def list_objects_v2(self, Bucket, MaxKeys):
@@ -23,9 +24,6 @@ async def test_admin_health_reports_each_service_without_live_llm_call(
             assert MaxKeys == 1
             return {"KeyCount": 1, "ResponseMetadata": {"HTTPStatusCode": 200}}
 
-    class FakeStorage:
-        bucket = "floreren-assets"
-        _client = FakeR2Client()
 
     async def failing_bioclip_worker():
         raise RuntimeError("connection refused")
@@ -42,7 +40,11 @@ async def test_admin_health_reports_each_service_without_live_llm_call(
     monkeypatch.setattr(llm_config, "LLM_API_KEY", "nous-token")
     monkeypatch.setattr(llm_config, "LLM_MODEL", "deepseek/deepseek-v4-flash")
     monkeypatch.setattr(admin_panel, "_check_bioclip_worker", failing_bioclip_worker)
-    monkeypatch.setattr(admin_panel, "build_storage_from_env", lambda: FakeStorage())
+    monkeypatch.setattr(
+        admin_panel, "build_storage_from_env",
+        lambda: R2Storage(client=FakeR2Client(), bucket="floreren-assets",
+                          public_base_url="https://cdn.example.com"),
+    )
 
     res = await client.get("/api/admin-panel/health", headers=auth_header)
 
