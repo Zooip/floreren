@@ -88,3 +88,23 @@ async def test_admin_health_times_out_slow_checks_without_blocking_others(
     assert body["database"]["status"] == "ok"
     assert body["bioclip"]["status"] == "down"
     assert "Timed out" in body["bioclip"]["detail"]
+
+
+@pytest.mark.asyncio
+async def test_admin_health_reports_local_storage_under_r2_key(
+    client, seeded_db, auth_header, monkeypatch, tmp_path
+):
+    await seeded_db.execute("UPDATE accounts SET is_admin = 1 WHERE id = 1")
+    await seeded_db.commit()
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    monkeypatch.setenv("LOCAL_STORAGE_DIR", str(tmp_path))
+    monkeypatch.setenv("LOCAL_STORAGE_PUBLIC_BASE_URL", "https://jardin.example/media")
+
+    body = (await client.get("/api/admin-panel/health", headers=auth_header)).json()
+    assert body["r2"]["status"] == "ok"
+    assert "local storage" in body["r2"]["detail"]
+
+    monkeypatch.delenv("LOCAL_STORAGE_DIR")
+    body = (await client.get("/api/admin-panel/health", headers=auth_header)).json()
+    assert body["r2"]["status"] == "unconfigured"
+    assert "LOCAL_STORAGE_DIR" in body["r2"]["detail"]

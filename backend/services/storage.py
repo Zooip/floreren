@@ -7,13 +7,17 @@ the app has to serve itself. ``STORAGE_BACKEND`` names the implementation
 """
 
 import os
+import tempfile
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import ClassVar
+from urllib.parse import urlparse
 
 import boto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 
 class Storage(ABC):
@@ -134,8 +138,93 @@ class R2Storage(Storage):
         return status, f"bucket {self.bucket} reachable; sampled {count} object(s)"
 
 
+class _SandboxedStaticFiles(StaticFiles):
+    """Uploads served from the app's own origin (R2 serves them from a
+    separate one): the sandbox CSP keeps an SVG opened directly from running
+    script there."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
+
+
+class LocalStorage(Storage):
+    """Files on the server's disk, for self-hosting on a single box.
+
+    Keys map to paths under ``root``; the app serves them at the path of
+    ``public_base_url`` (``https://host/media`` → ``/media``). The content
+    type is not stored: the static file server infers it from the key's
+    extension, which every key the app writes carries.
+    """
+
+    required_env = ("LOCAL_STORAGE_DIR", "LOCAL_STORAGE_PUBLIC_BASE_URL")
+
+    def __init__(self, root: str | Path, public_base_url: str) -> None:
+        super().__init__(public_base_url)
+        self.root = Path(root).resolve()
+        self.mount_path = urlparse(self.public_base_url).path
+        if not self.mount_path:
+            raise ValueError(
+                "LOCAL_STORAGE_PUBLIC_BASE_URL needs a path (e.g. https://example.com/media) "
+                "so stored files don't shadow the app's own routes"
+            )
+
+    @classmethod
+    def from_env(cls) -> "LocalStorage":
+        return cls(root=os.environ["LOCAL_STORAGE_DIR"],
+                   public_base_url=os.environ["LOCAL_STORAGE_PUBLIC_BASE_URL"])
+
+    @classmethod
+    def mount(cls, app: FastAPI) -> None:
+        storage = cls.from_env()
+        storage.root.mkdir(parents=True, exist_ok=True)
+        app.mount(storage.mount_path, _SandboxedStaticFiles(directory=storage.root),
+                  name="stored-files")
+
+    def _path(self, key: str) -> Path:
+        path = (self.root / key.lstrip("/")).resolve()
+        if not path.is_relative_to(self.root) or path == self.root:
+            raise ValueError(f"Storage key escapes the storage root: {key!r}")
+        return path
+
+    def put(self, key: str, data: bytes, content_type: str) -> str:
+        path = self._path(key)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Write-then-rename so a reader never sees a half-written file (some
+        # keys, like map SVGs and the watchdog state, are overwritten in place).
+        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(data)
+            os.chmod(tmp, 0o644)
+            os.replace(tmp, path)
+        except BaseException:
+            Path(tmp).unlink(missing_ok=True)
+            raise
+        return self.public_url(key)
+
+    def get(self, key: str) -> bytes | None:
+        try:
+            return self._path(key).read_bytes()
+        except (FileNotFoundError, IsADirectoryError):
+            return None
+
+    def delete(self, key: str) -> None:
+        self._path(key).unlink(missing_ok=True)
+
+    def check_health(self) -> tuple[str, str]:
+        if not self.root.is_dir():
+            return "down", f"local storage {self.root} does not exist"
+        if not os.access(self.root, os.W_OK):
+            return "down", f"local storage {self.root} is not writable"
+        return "ok", f"local storage {self.root} writable"
+
+
 _BACKENDS: dict[str, type[Storage]] = {
     "r2": R2Storage,
+    "local": LocalStorage,
 }
 
 
