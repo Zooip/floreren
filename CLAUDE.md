@@ -191,6 +191,8 @@ Key Fly secrets:
 | `PLANTNET_API_KEY` | PlantNet fallback identification |
 | `R2_*` | Cloudflare R2 for image uploads |
 
+Image storage is chosen by `STORAGE_BACKEND` (`services/storage.py`): `r2` (default, the `R2_*` secrets above) or `local` for self-hosting — files under `LOCAL_STORAGE_DIR`, served by the backend itself at the path of `LOCAL_STORAGE_PUBLIC_BASE_URL` (e.g. `https://example.com/media`). Production on Fly leaves it unset.
+
 ### Frontend — Vercel
 
 ```bash
